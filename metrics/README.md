@@ -1,6 +1,6 @@
 # Usage metrics
 
-Updated 2026-11-02 by `scripts/collect_metrics.py`. Raw history is in the CSV files in this folder.
+Updated 2026-11-05 by `scripts/collect_metrics.py`. Raw history is in the CSV files in this folder.
 
 | Metric | Value |
 |---|---|
@@ -8,7 +8,7 @@ Updated 2026-11-02 by `scripts/collect_metrics.py`. Raw history is in the CSV fi
 | Forks | 1 |
 | Watchers | 0 |
 | Repositories that depend on it | n/a |
-| Repository views since 2026-10-08 | 38 |
-| Repository clones since 2026-10-08 | 384 |
-| PyPI downloads since 2026-10-21 (without mirrors) | 434 |
+| Repository views since 2026-10-08 | 39 |
+| Repository clones since 2026-10-08 | 404 |
+| PyPI downloads since 2026-10-21 (without mirrors) | 447 |
 | PyPI downloads, last 30 days | 0 |
