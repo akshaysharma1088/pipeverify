@@ -90,7 +90,7 @@ Every one of these runs successfully and keeps the same schema.
 
 | Source | CLI form | Config form |
 |---|---|---|
-| CSV, Parquet, JSON file (CSV and JSON can be `.gz` or `.zst` compressed) | `data/orders.parquet` | `path: data/orders.parquet` |
+| CSV, Parquet, JSON, Excel (.xlsx) file (CSV and JSON can be `.gz` or `.zst` compressed) | `data/orders.parquet` | `path: data/orders.parquet` |
 | DuckDB table | `duckdb:warehouse.db:gold.orders` | `{duckdb: warehouse.db, table: gold.orders}` |
 | DuckDB query | `"duckdb:warehouse.db:SELECT ..."` | `{duckdb: warehouse.db, query: "SELECT ..."}` |
 | Any SQLAlchemy database (Postgres, Snowflake, BigQuery, ...) | | `{url: "postgresql://${PGUSER}@host/db", table: gold.orders}` |
@@ -99,7 +99,16 @@ Every one of these runs successfully and keeps the same schema.
 SQL databases need `pip install "pipeverify[sql]"` plus the driver for your database. Environment
 variables in URLs are expanded, so credentials stay out of the config file.
 
-See [SQL source examples](docs/sources.md) for Postgres, Snowflake and BigQuery.
+### Excel (.xlsx) support
+
+Excel files require the DuckDB Excel extension.
+
+Install it once using:
+
+    INSTALL excel;
+
+After installation, pipeverify loads the extension
+automatically when reading .xlsx files.
 
 ## Config
 

@@ -18,6 +18,7 @@ FILE_READERS = {
     ".json": "read_json_auto",
     ".jsonl": "read_json_auto",
     ".ndjson": "read_json_auto",
+    ".xlsx": "read_xlsx",
 }
 
 
@@ -128,6 +129,14 @@ def load(con: duckdb.DuckDBPyConnection, source: Source, name: str) -> None:
             raise SourceError(
                 f"Compressed Parquet ('{ext}{compression}') is not supported. Parquet is already "
                 f"compressed internally, so use the plain {ext} file.")
+        if ext == ".xlsx":
+            try:
+                con.execute("LOAD excel")
+            except duckdb.Error as e:
+                raise SourceError(
+                    f"Excel extension could not be loaded. "
+                    f"Install it using INSTALL excel. Details: {e}"
+                ) from e
         con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM {reader}(?)', [path])
         return
     if source.kind == "duckdb":
