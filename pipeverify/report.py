@@ -29,7 +29,7 @@ def _color(text: str, sev: str) -> str:
     return f"\033[{code}m{text}\033[0m"
 
 
-def to_text(result: RunResult, show_info: bool = False) -> str:
+def to_text(result: RunResult, show_info: bool = False, max_examples: int = 1) -> str:
     lines = []
     for t in result.tables:
         lines.append(_color(f"{LABEL[t.verdict]:<7}", t.verdict) + f" {t.name}")
@@ -46,7 +46,8 @@ def to_text(result: RunResult, show_info: bool = False) -> str:
             lines.append("        " + _color(f"{LABEL[f.severity]:<6}", f.severity) + f" {f.message}")
             ex = f.metrics.get("examples") if f.metrics else None
             if ex:
-                lines.append(f"               e.g. {ex[0]}")
+                for row in ex[:max(0, max_examples)]:
+                    lines.append(f"               e.g. {row}")
     lines.append("")
     lines.append(_color(f"Verdict: {LABEL[result.verdict]}", result.verdict) + f"  {_headline(result)}")
     if result.explanation:
