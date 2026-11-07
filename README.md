@@ -90,7 +90,7 @@ Every one of these runs successfully and keeps the same schema.
 
 | Source | CLI form | Config form |
 |---|---|---|
-| CSV, Parquet, JSON file (CSV and JSON can be `.gz` or `.zst` compressed) | `data/orders.parquet` | `path: data/orders.parquet` |
+| CSV, Parquet, JSON, Excel (.xlsx) file (CSV and JSON can be `.gz` or `.zst` compressed) | `data/orders.parquet` | `path: data/orders.parquet` |
 | DuckDB table | `duckdb:warehouse.db:gold.orders` | `{duckdb: warehouse.db, table: gold.orders}` |
 | DuckDB query | `"duckdb:warehouse.db:SELECT ..."` | `{duckdb: warehouse.db, query: "SELECT ..."}` |
 | Any SQLAlchemy database (Postgres, Snowflake, BigQuery, ...) | | `{url: "postgresql://${PGUSER}@host/db", table: gold.orders}` |

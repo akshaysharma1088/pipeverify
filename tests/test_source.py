@@ -1,10 +1,14 @@
 import subprocess
 import sys
+from openpyxl import Workbook
 
 import pandas as pd
 import pytest
 
 import pipeverify
+
+import duckdb
+from pipeverify.sources import Source, SourceError, load
 
 
 def raw():
@@ -73,3 +77,21 @@ def test_cli_source_only(tmp_path):
                        capture_output=True, text=True)
     assert r.returncode == 1, r.stdout + r.stderr
     assert "conflicting" in r.stdout
+
+def test_excel_source(tmp_path):
+    wb = Workbook()
+    excel_path = tmp_path / "sample.xlsx"
+    ws = wb.active
+    ws.append(["txn_id", "amt"])
+    ws.append(["1", 10.0])
+    wb.save(excel_path)
+    con = duckdb.connect()
+
+    try:
+        load(con, Source(kind="file", path=str(excel_path)), "test_data")
+    except SourceError as e:
+        pytest.skip(f"Excel extension unavailable: {e}")
+
+    rows = con.execute("SELECT * FROM test_data").fetchall()
+    assert rows == [("1", 10.0)]
+
