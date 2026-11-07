@@ -28,19 +28,19 @@ tables:
 
 
 def _emit(result: RunResult, fmt: str, output: str | None, summary: str | None, show_info: bool,
-          json_out: str | None = None, markdown_out: str | None = None) -> None:
+          json_out: str | None = None, markdown_out: str | None = None, max_examples: int = 1) -> None:
     for path, render in ((json_out, to_json), (markdown_out, to_markdown)):
         if path:
             with open(path, "w", encoding="utf-8") as fh:
                 body = render(result)
                 fh.write(body if body.endswith("\n") else body + "\n")
-    text = {"text": lambda: to_text(result, show_info), "markdown": lambda: to_markdown(result),
+    text = {"text": lambda: to_text(result, show_info, max_examples), "markdown": lambda: to_markdown(result),
             "json": lambda: to_json(result)}[fmt]()
     if output:
         with open(output, "w", encoding="utf-8") as fh:
             fh.write(text if text.endswith("\n") else text + "\n")
         if fmt != "text":
-            click.echo(to_text(result, show_info))
+            click.echo(to_text(result, show_info, max_examples))
     else:
         click.echo(text)
     if summary:
@@ -79,6 +79,8 @@ output_options = [
     click.option("--show-info", is_flag=True, help="Also print informational findings."),
     click.option("--json-out", type=click.Path(dir_okay=False), help="Also write a JSON report here."),
     click.option("--markdown-out", type=click.Path(dir_okay=False), help="Also write a Markdown report here."),
+    click.option("--max-examples", type=int, default=1, show_default=True,
+                 help="Example rows to show per finding."),
 ]
 
 
@@ -110,7 +112,7 @@ def main() -> None:
 @with_output_options
 def compare(before, after, source_data, source_key, source_columns, source_where,
             key, expect_change, ignore, expect_row_change, name,
-            fmt, output, summary, fail_on, explain, show_info, json_out, markdown_out):
+            fmt, output, summary, fail_on, explain, show_info, json_out, markdown_out, max_examples):
     """Compare one table BEFORE and AFTER a change.
 
     Use - as BEFORE to run only the source checks.
@@ -135,7 +137,7 @@ def compare(before, after, source_data, source_key, source_columns, source_where
         raise click.ClickException(str(exc))
     result = RunResult(tables=[res], seconds=time.perf_counter() - start)
     _maybe_explain(result, explain)
-    _emit(result, fmt, output, summary, show_info, json_out, markdown_out)
+    _emit(result, fmt, output, summary, show_info, json_out, markdown_out, max_examples)
     _exit(result, fail_on)
 
 
@@ -144,7 +146,7 @@ def compare(before, after, source_data, source_key, source_columns, source_where
               type=click.Path(exists=True, dir_okay=False), help="Config file listing the tables.")
 @click.option("--table", "-t", multiple=True, help="Only check these table names. Repeatable.")
 @with_output_options
-def run(config, table, fmt, output, summary, fail_on, explain, show_info, json_out, markdown_out):
+def run(config, table, fmt, output, summary, fail_on, explain, show_info, json_out, markdown_out, max_examples):
     """Check every table listed in a config file."""
     try:
         result = run_config(config, only=list(table) or None)
@@ -153,7 +155,7 @@ def run(config, table, fmt, output, summary, fail_on, explain, show_info, json_o
     if not result.tables:
         raise click.ClickException("No tables matched")
     _maybe_explain(result, explain)
-    _emit(result, fmt, output, summary, show_info, json_out, markdown_out)
+    _emit(result, fmt, output, summary, show_info, json_out, markdown_out, max_examples)
     _exit(result, fail_on)
 
 
