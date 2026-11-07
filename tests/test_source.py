@@ -8,7 +8,7 @@ import pytest
 import pipeverify
 
 import duckdb
-from pipeverify.sources import Source, load
+from pipeverify.sources import Source, SourceError, load
 
 
 def raw():
@@ -86,6 +86,12 @@ def test_excel_source(tmp_path):
     ws.append(["1", 10.0])
     wb.save(excel_path)
     con = duckdb.connect()
-    load(con, Source(kind="file", path=str(excel_path)), "test_data")
+
+    try:
+        load(con, Source(kind="file", path=str(excel_path)), "test_data")
+    except SourceError as e:
+        pytest.skip(f"Excel extension unavailable: {e}")
+
     rows = con.execute("SELECT * FROM test_data").fetchall()
     assert rows == [("1", 10.0)]
+

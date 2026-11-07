@@ -99,16 +99,7 @@ Every one of these runs successfully and keeps the same schema.
 SQL databases need `pip install "pipeverify[sql]"` plus the driver for your database. Environment
 variables in URLs are expanded, so credentials stay out of the config file.
 
-### Excel (.xlsx) support
-
-Excel files require the DuckDB Excel extension.
-
-Install it once using:
-
-    INSTALL excel;
-
-After installation, pipeverify loads the extension
-automatically when reading .xlsx files.
+See [SQL source examples](docs/sources.md) for Postgres, Snowflake and BigQuery.
 
 ## Config
 
