@@ -25,6 +25,7 @@ class Thresholds:
 
     Percentages are shares of rows, from 0 to 100.
     """
+    skip_id_like_totals: bool=True
 
     row_change_review_pct: float = 1.0
     row_change_block_pct: float = 10.0
@@ -82,7 +83,6 @@ def _schema(con: duckdb.DuckDBPyConnection, table: str) -> dict[str, str]:
     rows = con.execute(f"DESCRIBE {q(table)}").fetchall()
     return {r[0]: str(r[1]).upper() for r in rows}
 
-
 def _is_numeric(dtype: str) -> bool:
     return dtype.startswith(NUMERIC_TYPES)
 
@@ -90,6 +90,10 @@ def _is_numeric(dtype: str) -> bool:
 def _is_text(dtype: str) -> bool:
     return dtype.startswith(TEXT_TYPES)
 
+def _looks_like_id(name: str,dtype: str) -> bool:
+    name_lower=str(name).lower()
+    is_int="int" in str(dtype).lower()
+    return is_int and (name_lower=="id" or name_lower.endswith("_id"))
 
 def run_checks(
     con: duckdb.DuckDBPyConnection,
@@ -240,6 +244,8 @@ def run_checks(
     # 6. totals of numeric columns
     for c in common:
         if c in key or not (_is_numeric(sb[c]) and _is_numeric(sa[c])):
+            continue
+        if t.skip_id_like_totals and _looks_like_id(c, sb[c]):
             continue
         tb, ta = con.execute(
             f"SELECT (SELECT sum(CAST({q(c)} AS DOUBLE)) FROM {q(before)}), "
