@@ -12,6 +12,7 @@ Works with SQL, Spark, dbt, Airflow, or a fix written by an AI agent.
 
 <p align="center">
   <a href="https://pypi.org/project/pipeverify/"><img src="https://img.shields.io/pypi/v/pipeverify?label=pypi&color=38bdf8" alt="PyPI"></a>
+  <a href="https://pepy.tech/projects/pipeverify"><img src="https://static.pepy.tech/personalized-badge/pipeverify?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads" alt="PyPI Downloads"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-4ade80" alt="License"></a>
   <a href="https://github.com/akshaysharma1088/pipeverify/actions/workflows/ci.yml"><img src="https://github.com/akshaysharma1088/pipeverify/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://doi.org/10.5281/zenodo.23542277"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23542277.svg" alt="DOI"></a>
