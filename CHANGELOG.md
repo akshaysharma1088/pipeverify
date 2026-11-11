@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3 (2026-11-11)
+
+- Read Excel (`.xlsx`) files as sources. (#13, thanks @adeebaimam)
+- `--max-examples` shows more than one example row per finding in the text report. (#15, thanks @painbaba)
+- Tests for the `pipeverify init` command. (#14, thanks @painbaba)
+- README: PyPI downloads badge.
+
 ## 0.2.2 (2026-10-23)
 
 - Read compressed CSV and JSON files (`.csv.gz`, `.json.gz`, `.jsonl.gz`, `.zst`). Compressed
