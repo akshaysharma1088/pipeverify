@@ -129,3 +129,19 @@ def test_cli_json_and_exit_codes(tmp_path):
     out = subprocess.run([sys.executable, "-m", "pipeverify.cli", "compare", str(b), str(a),
                           "--key", "id", "--fail-on", "never"], capture_output=True, text=True)
     assert out.returncode == 0
+
+def test_skip_id_like_totals_default():
+    before = pd.DataFrame({"order_id": [1, 2], "amount": [10.0, 20.0]})
+    after = pd.DataFrame({"order_id": [1, 2, 3], "amount": [10.0, 20.0, 30.0]})
+    res = pipeverify.verify(before, after, expect_row_change=True)
+    shift_cols = [f.column for f in res.findings if f.check == "total_shift"]
+    assert "amount" in shift_cols
+    assert "order_id" not in shift_cols
+
+def test_skip_id_like_totals_off():
+    before = pd.DataFrame({"order_id": [1, 2], "amount": [10.0, 20.0]})
+    after = pd.DataFrame({"order_id": [1, 2, 3], "amount": [10.0, 20.0, 30.0]})
+    res = pipeverify.verify(before, after, expect_row_change=True, thresholds={"skip_id_like_totals": False})
+    shift_cols = [f.column for f in res.findings if f.check == "total_shift"]
+    assert "amount" in shift_cols
+    assert "order_id" in shift_cols

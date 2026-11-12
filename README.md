@@ -109,6 +109,7 @@ Check many tables at once with `pipeverify.yml` (`pipeverify init` writes a star
 ```yaml
 thresholds:              # optional, overrides the defaults below for every table
   row_change_block_pct: 10
+  #skip_id_like_totals: true    # set to false to also check totals of *_id columns
 tables:
   - name: gold.daily_sales
     before: snapshots/main/daily_sales.parquet
