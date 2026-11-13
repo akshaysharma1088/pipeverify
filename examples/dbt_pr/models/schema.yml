@@ -1,0 +1,9 @@
+version: 2
+models:
+  - name: fct_daily_sales
+    description: Daily orders and revenue per store.
+    columns:
+      - name: store_id
+        tests: [not_null]
+      - name: revenue
+        tests: [not_null]

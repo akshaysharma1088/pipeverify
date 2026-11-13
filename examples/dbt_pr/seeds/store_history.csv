@@ -1,0 +1,10 @@
+store_id,region,valid_from
+1,south,2024-01-01
+2,east,2024-01-01
+3,west,2024-01-01
+4,north,2024-01-01
+5,south,2024-01-01
+6,east,2024-01-01
+7,west,2024-01-01
+8,north,2024-01-01
+3,north,2026-06-01

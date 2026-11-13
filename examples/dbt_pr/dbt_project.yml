@@ -1,0 +1,8 @@
+name: pipeverify_demo
+version: "1.0"
+profile: pipeverify_demo
+model-paths: [models]
+seed-paths: [seeds]
+models:
+  pipeverify_demo:
+    +materialized: table

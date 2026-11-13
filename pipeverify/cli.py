@@ -1,4 +1,4 @@
-"""Command line interface: pipeverify compare | run | init."""
+"""Command line interface: pipeverify compare | run | init | mcp."""
 from __future__ import annotations
 
 import os
@@ -14,6 +14,7 @@ from .report import to_json, to_markdown, to_text
 SAMPLE_CONFIG = """\
 # pipeverify config: one entry per table you want to check after a change.
 # before/after can be a file (csv, parquet, json), duckdb:<file.db>:<table>,
+# snowflake:<DB.SCHEMA.TABLE>, a dbt model such as {dbt: fct_orders, target: prod},
 # or a mapping such as {url: postgresql://..., table: schema.table}.
 thresholds:
   row_change_block_pct: 10
@@ -122,6 +123,7 @@ def compare(before, after, source_data, source_key, source_columns, source_where
       pipeverify compare before.parquet after.parquet --key order_id
       pipeverify compare - silver.parquet -k txn_id --source raw.parquet --source-column amount
       pipeverify compare duckdb:prod.db:gold.sales duckdb:dev.db:gold.sales -k id
+      pipeverify compare snowflake:PROD.GOLD.SALES snowflake:DEV.GOLD.SALES -k id
     """
     import time
     start = time.perf_counter()
@@ -168,6 +170,19 @@ def init(path):
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(SAMPLE_CONFIG)
     click.echo(f"Wrote {path}. Edit the table entries, then run: pipeverify run")
+
+
+@main.command()
+def mcp():
+    """Run pipeverify as an MCP server (stdio), so AI agents can check a data change.
+
+    Needs Python 3.10 or newer.
+    """
+    try:
+        from .mcp_server import main as serve
+    except ImportError:
+        raise click.ClickException("The MCP server needs Python 3.10 or newer")
+    serve()
 
 
 if __name__ == "__main__":  # pragma: no cover

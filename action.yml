@@ -12,59 +12,94 @@ inputs:
     description: "Fail the job at this verdict or worse: review, block or never."
     default: "block"
   comment:
-    description: "Post the report as a pull request comment (true/false)."
+    description: "Post the report as a pull request comment (true/false). Needs pull-requests: write."
     default: "true"
   explain:
     description: "Add an LLM explanation (needs ANTHROPIC_API_KEY or OPENAI_API_KEY in env)."
     default: "false"
-  version:
-    description: "pipeverify version to install from PyPI. Leave empty to install from this action's source."
+  extras:
+    description: "Database drivers to install with pipeverify, comma separated: snowflake (Snowflake tables and dbt-snowflake targets), sql (any SQLAlchemy database). Leave empty for files, DuckDB and dbt-duckdb."
     default: ""
+  version:
+    description: "pipeverify version to install from PyPI. Leave empty to install the version this action was pinned to."
+    default: ""
+  python-version:
+    description: "Python version to set up. Use 'none' to keep the Python already on the runner."
+    default: "3.12"
 outputs:
   verdict:
     description: "pass, review or block"
     value: ${{ steps.run.outputs.verdict }}
+  report:
+    description: "Path to the Markdown report"
+    value: ${{ steps.run.outputs.report }}
+  json:
+    description: "Path to the JSON report"
+    value: ${{ steps.run.outputs.json }}
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-python@v5
+    - name: Set up Python
+      if: ${{ inputs.python-version != 'none' }}
+      uses: actions/setup-python@v7
       with:
-        python-version: "3.12"
+        python-version: ${{ inputs.python-version }}
+    # Inputs reach the shell through environment variables, never by being pasted into the script,
+    # so a value with quotes or $(...) in it cannot run as a command.
     - name: Install pipeverify
       shell: bash
+      env:
+        IN_VERSION: ${{ inputs.version }}
+        IN_EXTRAS: ${{ inputs.extras }}
+        IN_EXPLAIN: ${{ inputs.explain }}
       run: |
-        if [ -n "${{ inputs.version }}" ]; then
-          pip install "pipeverify==${{ inputs.version }}"
+        extras="$IN_EXTRAS"
+        if [ "$IN_EXPLAIN" = "true" ]; then extras="$extras,ai"; fi
+        extras="$(echo "$extras" | tr -d ' ' | sed 's/^,*//; s/,*$//; s/,,*/,/g')"
+        case "$extras" in *[!A-Za-z0-9_,-]*) echo "::error::extras may only contain names and commas"; exit 1;; esac
+        case "$IN_VERSION" in *[!A-Za-z0-9.]*) echo "::error::version must look like 0.3.0"; exit 1;; esac
+        if [ -n "$IN_VERSION" ]; then
+          python -m pip install --quiet "pipeverify${extras:+[$extras]}==$IN_VERSION"
         else
-          pip install "${{ github.action_path }}"
+          python -m pip install --quiet "${GITHUB_ACTION_PATH}${extras:+[$extras]}"
         fi
-        if [ "${{ inputs.explain }}" = "true" ]; then pip install "anthropic>=0.40" "openai>=1.40"; fi
     - name: Run pipeverify
       id: run
       shell: bash
+      env:
+        IN_CONFIG: ${{ inputs.config }}
+        IN_EXPLAIN: ${{ inputs.explain }}
       run: |
-        set +e
-        EXTRA=""
-        if [ "${{ inputs.explain }}" = "true" ]; then EXTRA="--explain"; fi
-        pipeverify run -c "${{ inputs.config }}" --fail-on never $EXTRA \
-          --json-out pipeverify-report.json --markdown-out pipeverify-report.md
-        VERDICT=$(python -c "import json;print(json.load(open('pipeverify-report.json'))['verdict'])")
-        echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+        args=(-c "$IN_CONFIG" --fail-on never --json-out "$RUNNER_TEMP/pipeverify-report.json" --markdown-out "$RUNNER_TEMP/pipeverify-report.md")
+        if [ "$IN_EXPLAIN" = "true" ]; then args+=(--explain); fi
+        # a run that cannot start (missing config, no tables) fails the job here instead of passing silently
+        pipeverify run "${args[@]}"
+        VERDICT=$(python -c "import json,sys;print(json.load(open(sys.argv[1]))['verdict'])" "$RUNNER_TEMP/pipeverify-report.json")
+        {
+          echo "verdict=$VERDICT"
+          echo "report=$RUNNER_TEMP/pipeverify-report.md"
+          echo "json=$RUNNER_TEMP/pipeverify-report.json"
+        } >> "$GITHUB_OUTPUT"
     - name: Comment on pull request
       if: ${{ inputs.comment == 'true' && github.event_name == 'pull_request' }}
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPORT: ${{ steps.run.outputs.report }}
       run: |
-        gh pr comment "${{ github.event.pull_request.number }}" --body-file pipeverify-report.md --edit-last \
-          || gh pr comment "${{ github.event.pull_request.number }}" --body-file pipeverify-report.md \
+        gh pr comment "$PR_NUMBER" --body-file "$REPORT" --edit-last \
+          || gh pr comment "$PR_NUMBER" --body-file "$REPORT" \
           || echo "Could not comment (needs pull-requests: write permission)."
     - name: Apply verdict
       shell: bash
+      env:
+        VERDICT: ${{ steps.run.outputs.verdict }}
+        IN_FAIL_ON: ${{ inputs.fail-on }}
       run: |
-        V="${{ steps.run.outputs.verdict }}"
-        case "${{ inputs.fail-on }}" in
+        fail() { echo "::error title=pipeverify::Verdict: $VERDICT. See the job summary for the findings."; exit 1; }
+        case "$IN_FAIL_ON" in
           never) exit 0 ;;
-          review) [ "$V" = "pass" ] || { echo "pipeverify verdict: $V"; exit 1; } ;;
-          *) [ "$V" != "block" ] || { echo "pipeverify verdict: $V"; exit 1; } ;;
+          review) [ "$VERDICT" = "pass" ] || fail ;;
+          *) [ "$VERDICT" != "block" ] || fail ;;
         esac

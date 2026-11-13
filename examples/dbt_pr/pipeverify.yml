@@ -1,0 +1,7 @@
+# Compare the pull request's build of a dbt model with production.
+# `dbt:` finds the model's table from dbt's manifest and connects the way profiles.yml says.
+tables:
+  - name: fct_daily_sales
+    before: {dbt: fct_daily_sales, target: prod, manifest: target-prod/manifest.json}
+    after: {dbt: fct_daily_sales, target: ci}
+    key: [store_id, sale_date]

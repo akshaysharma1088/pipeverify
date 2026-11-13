@@ -11,10 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.11", "3.13"]
+        python: ["3.9", "3.10", "3.11", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - run: pip install -e ".[dev]"
@@ -26,14 +26,69 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install duckdb && python examples/retail/make_demo.py
       - name: Run the action on a scenario that should be flagged
+        id: flagged
         uses: ./
         with:
           config: examples/retail/scenarios/5_null_creep/pipeverify.yml
           fail-on: never
           comment: "false"
+      - name: The verdict output is set
+        env:
+          VERDICT: ${{ steps.flagged.outputs.verdict }}
+        run: test "$VERDICT" = "review"
+      - name: The gate fails the job on a harmful change
+        id: gate
+        continue-on-error: true
+        uses: ./
+        with:
+          config: examples/retail/scenarios/3_join_fanout/pipeverify.yml
+          comment: "false"
+          python-version: none
+      - name: The gate must have failed
+        env:
+          OUTCOME: ${{ steps.gate.outcome }}
+        run: test "$OUTCOME" = "failure"
+  dbt:
+    # A real dbt project: production on main, a pull request that fans out a join, and pipeverify between them.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install dbt-duckdb
+      - name: Build production, then the pull request with the bug
+        working-directory: examples/dbt_pr
+        run: |
+          dbt build --target prod --target-path target-prod
+          dbt build --target ci --vars '{bug: true}'
+      - name: pipeverify blocks the buggy pull request
+        id: bad
+        continue-on-error: true
+        uses: ./
+        with:
+          config: examples/dbt_pr/pipeverify.yml
+          comment: "false"
+          python-version: none
+      - name: Build the pull request without the bug
+        working-directory: examples/dbt_pr
+        run: dbt build --target ci
+      - name: pipeverify passes the clean pull request
+        id: good
+        uses: ./
+        with:
+          config: examples/dbt_pr/pipeverify.yml
+          comment: "false"
+          python-version: none
+      - name: Verdicts are as expected
+        env:
+          BAD: ${{ steps.bad.outputs.verdict }}
+          BAD_OUTCOME: ${{ steps.bad.outcome }}
+          GOOD: ${{ steps.good.outputs.verdict }}
+        run: test "$BAD" = "block" && test "$BAD_OUTCOME" = "failure" && test "$GOOD" = "pass"

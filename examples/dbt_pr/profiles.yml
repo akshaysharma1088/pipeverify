@@ -1,0 +1,10 @@
+# Two DuckDB files stand in for production and for the pull request's build.
+pipeverify_demo:
+  target: ci
+  outputs:
+    prod:
+      type: duckdb
+      path: prod.duckdb
+    ci:
+      type: duckdb
+      path: ci.duckdb
