@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0 (2026-11-12)
+
+- **dbt source.** `{dbt: model, target: prod, manifest: ...}` finds a model's table from dbt's
+  manifest and connects through the project's `profiles.yml`, so a pull request's build can be
+  compared with production in a few lines of config. DuckDB and Snowflake targets. A runnable example
+  is in `examples/dbt_pr`. (#5)
+- **Native Snowflake source.** `snowflake:DB.SCHEMA.TABLE`, a query, or
+  `{snowflake: ..., connection: ..., where: ...}`. Uses the standard `SNOWFLAKE_*` variables or a named
+  connection, runs one read-only `SELECT` per snapshot, and lines up Snowflake's capital column names
+  and NUMBER values with file and DuckDB snapshots. Install with `pip install "pipeverify[snowflake]"`.
+- **MCP server.** `pipeverify mcp` lets AI agents check their own data changes with three read-only
+  tools: `compare_tables`, `check_against_source` and `run_config`. Needs Python 3.10 or newer.
+- **GitHub Action.** New `extras` input installs database drivers, new `python-version` input, and
+  `report` and `json` outputs. Inputs now reach the shell as environment variables, which closes a
+  script injection risk. Fix: a run that could not start (missing config, no matching table) used to
+  leave the job green; it now fails.
+- Releases run the full test suite before publishing and list the new version in the MCP Registry.
+  Added CodeQL scanning and Dependabot. CI also tests Python 3.10 and runs a real dbt project.
+
 ## 0.2.3 (2026-11-11)
 
 - Read Excel (`.xlsx`) files as sources. (#13, thanks @adeebaimam)

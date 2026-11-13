@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pipeverify"
-version = "0.2.3"
+version = "0.3.0"
 description = "Check that a pipeline change left the data right, not just the job green."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.9"
 authors = [{ name = "Akshay Sharma" }]
-keywords = ["data-quality", "data-engineering", "data-diff", "ci", "llm-agents", "duckdb", "etl"]
+keywords = ["data-quality", "data-engineering", "data-diff", "ci", "llm-agents", "duckdb", "etl", "dbt", "snowflake", "mcp"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -18,11 +18,17 @@ classifiers = [
   "Topic :: Software Development :: Quality Assurance",
   "Programming Language :: Python :: 3",
 ]
-dependencies = ["duckdb>=1.0", "pyyaml>=6.0", "click>=8.1"]
+dependencies = [
+  "duckdb>=1.0", "pyyaml>=6.0", "click>=8.1",
+  # the MCP server (pipeverify mcp); the mcp package needs Python 3.10+
+  "mcp>=1.23; python_version >= '3.10'", "typing_extensions>=4.6; python_version >= '3.10'",
+]
 
 [project.optional-dependencies]
 sql = ["sqlalchemy>=2.0", "pandas>=2.0"]
 ai = ["anthropic>=0.40", "openai>=1.40"]
+snowflake = ["snowflake-connector-python[pandas]>=3.12", "pandas>=2.0"]
+mcp = []  # kept so "pipeverify[mcp]" keeps working; the server is part of the base install
 dev = ["pytest>=8", "pandas>=2.0", "openpyxl"]
 
 [project.scripts]

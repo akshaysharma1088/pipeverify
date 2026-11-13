@@ -1,4 +1,4 @@
-"""Load a table snapshot from a file, a DuckDB database, any SQL database or a DataFrame.
+"""Load a table snapshot from a file, a DuckDB database, Snowflake, a dbt model, any SQL database or a DataFrame.
 
 Every source ends up as a table inside one DuckDB connection, where the checks run.
 """
@@ -30,18 +30,24 @@ class SourceError(ValueError):
 class Source:
     """A normalized description of where a table snapshot lives."""
 
-    kind: str  # file | duckdb | sql | dataframe
+    kind: str  # file | duckdb | sql | snowflake | dataframe
     path: str | None = None
     table: str | None = None
     query: str | None = None
     url: str | None = None
     frame: Any = None
+    params: Any = None          # Snowflake connector arguments
+    label: str | None = None    # how a dbt source is shown in reports
 
     def describe(self) -> str:
+        if self.label:
+            return self.label
         if self.kind == "file":
             return self.path or ""
         if self.kind == "duckdb":
             return f"duckdb:{self.path}:{self.table or 'query'}"
+        if self.kind == "snowflake":
+            return f"snowflake:{self.table or 'query'}"
         if self.kind == "sql":
             return f"sql:{_redact(self.url or '')}:{self.table or 'query'}"
         return "dataframe"
@@ -64,8 +70,12 @@ def parse_source(spec: Any, base_dir: str = ".") -> Source:
       data/orders.parquet               a file (csv, parquet, json)
       duckdb:warehouse.db:gold.orders   a table in a DuckDB file
       duckdb:warehouse.db:SELECT ...    a query against a DuckDB file
+      snowflake:ANALYTICS.GOLD.ORDERS   a Snowflake table (or snowflake:SELECT ...)
+      dbt:fct_orders                    the table behind a dbt model in the current folder's project
     Mapping forms (config file):
       {path: ...} | {duckdb: ..., table|query: ...} | {url: ..., table|query: ...}
+      {snowflake: <table or query>, connection: <name>, where: <filter>}
+      {dbt: <model>, target: <name>, manifest: <path>, project_dir: <path>, profiles_dir: <path>, where: <filter>}
     """
     if hasattr(spec, "columns") and hasattr(spec, "dtypes"):
         return Source(kind="dataframe", frame=spec)
@@ -79,6 +89,10 @@ def parse_source(spec: Any, base_dir: str = ".") -> Source:
             if target.strip().lower().startswith(("select", "with")):
                 return Source(kind="duckdb", path=path, query=target)
             return Source(kind="duckdb", path=path, table=target)
+        if spec.startswith("snowflake:"):
+            return _snowflake_source({"snowflake": spec.split(":", 1)[1]})
+        if spec.startswith("dbt:"):
+            return _dbt_source({"dbt": spec.split(":", 1)[1]}, base_dir)
         return Source(kind="file", path=_resolve(spec, base_dir))
     if isinstance(spec, Mapping):
         if "path" in spec:
@@ -89,7 +103,43 @@ def parse_source(spec: Any, base_dir: str = ".") -> Source:
         if "url" in spec:
             url = os.path.expandvars(str(spec["url"]))
             return Source(kind="sql", url=url, table=spec.get("table"), query=spec.get("query"))
+        if "snowflake" in spec:
+            return _snowflake_source(spec)
+        if "dbt" in spec:
+            return _dbt_source(spec, base_dir)
     raise SourceError(f"Unrecognized source: {spec!r}")
+
+
+def _snowflake_source(spec: Mapping) -> Source:
+    from . import warehouse
+
+    target = str(spec["snowflake"]).strip()
+    try:
+        query = warehouse.select(target, spec.get("where"))
+        params = warehouse.snowflake_params(spec.get("connection"))
+    except warehouse.WarehouseError as exc:
+        raise SourceError(str(exc)) from None
+    return Source(kind="snowflake", table=None if warehouse.is_query(target) else target, query=query, params=params)
+
+
+def _dbt_source(spec: Mapping, base_dir: str) -> Source:
+    from . import warehouse
+
+    model = str(spec["dbt"]).strip()
+    project_dir = _resolve(str(spec.get("project_dir") or "."), base_dir)
+    manifest = _resolve(str(spec["manifest"]), base_dir) if spec.get("manifest") else None
+    profiles_dir = _resolve(str(spec["profiles_dir"]), base_dir) if spec.get("profiles_dir") else None
+    try:
+        found = warehouse.resolve_dbt(model, project_dir, spec.get("target"), manifest, profiles_dir)
+        label = f"dbt:{model} ({found['target']})"
+        if found["kind"] == "duckdb":
+            where = f" WHERE {spec['where']}" if spec.get("where") else ""
+            return Source(kind="duckdb", path=found["path"], label=label,
+                          query=f"SELECT * FROM {found['table']}{where}")
+        return Source(kind="snowflake", table=found["table"], params=found["params"], label=label,
+                      query=warehouse.select(found["table"], spec.get("where")))
+    except warehouse.WarehouseError as exc:
+        raise SourceError(str(exc)) from None
 
 
 def _resolve(path: str, base_dir: str) -> str:
@@ -169,6 +219,15 @@ def load(con: duckdb.DuckDBPyConnection, source: Source, name: str) -> None:
         query = source.query or f"SELECT * FROM {source.table}"
         with engine.connect() as conn:
             frame = pd.read_sql(sqlalchemy.text(query), conn)
+        load(con, Source(kind="dataframe", frame=frame), name)
+        return
+    if source.kind == "snowflake":
+        from . import warehouse
+
+        try:
+            frame = warehouse.read_snowflake(source.query or "", source.params or {})
+        except warehouse.WarehouseError as exc:
+            raise SourceError(str(exc)) from None
         load(con, Source(kind="dataframe", frame=frame), name)
         return
     raise SourceError(f"Unknown source kind {source.kind}")

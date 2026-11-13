@@ -35,7 +35,8 @@ pipeverify compares your tables **before and after** a change and gives a verdic
 | ⛔ **BLOCK** | The change damages the data. | Fail the check |
 
 It works with any tool that produces tables: SQL scripts, Spark jobs, dbt, Airflow tasks or an AI
-agent's fix. It needs two snapshots, nothing else.
+agent's fix. It needs two snapshots, nothing else. It reads dbt models and Snowflake tables directly,
+runs as a [GitHub Action](#github-action), and AI agents can call it through [MCP](#use-it-from-an-ai-agent-mcp).
 
 ## Why
 
@@ -94,13 +95,49 @@ Every one of these runs successfully and keeps the same schema.
 | CSV, Parquet, JSON, Excel (.xlsx) file (CSV and JSON can be `.gz` or `.zst` compressed) | `data/orders.parquet` | `path: data/orders.parquet` |
 | DuckDB table | `duckdb:warehouse.db:gold.orders` | `{duckdb: warehouse.db, table: gold.orders}` |
 | DuckDB query | `"duckdb:warehouse.db:SELECT ..."` | `{duckdb: warehouse.db, query: "SELECT ..."}` |
-| Any SQLAlchemy database (Postgres, Snowflake, BigQuery, ...) | | `{url: "postgresql://${PGUSER}@host/db", table: gold.orders}` |
+| dbt model (DuckDB or Snowflake target) | `dbt:fct_orders` | `{dbt: fct_orders, target: prod, manifest: prod/manifest.json}` |
+| Snowflake table or query | `snowflake:ANALYTICS.GOLD.ORDERS` | `{snowflake: ANALYTICS.GOLD.ORDERS, where: "order_date >= '2026-10-01'"}` |
+| Any SQLAlchemy database (Postgres, BigQuery, ...) | | `{url: "postgresql://${PGUSER}@host/db", table: gold.orders}` |
 | pandas DataFrame | | Python API |
 
 SQL databases need `pip install "pipeverify[sql]"` plus the driver for your database. Environment
 variables in URLs are expanded, so credentials stay out of the config file.
 
 See [SQL source examples](docs/sources.md) for Postgres, Snowflake and BigQuery.
+
+### dbt: check a pull request against production
+
+```yaml
+# pipeverify.yml, next to dbt_project.yml
+tables:
+  - name: fct_daily_sales
+    before: {dbt: fct_daily_sales, target: prod, manifest: prod-state/manifest.json}
+    after: {dbt: fct_daily_sales, target: ci}
+    key: [store_id, sale_date]
+```
+
+`dbt: <model>` finds the model's table in dbt's `manifest.json` and connects the way `profiles.yml`
+says for that target, so there is no second set of credentials to keep. `manifest` is the manifest of
+the run you are comparing with (the same file `--state` and `--defer` use); leave it out for
+`target/manifest.json`. pipeverify does not run dbt and writes nothing. DuckDB and Snowflake targets
+work today. A runnable project, with a join that fans out while every dbt test stays green, is in
+[examples/dbt_pr](examples/dbt_pr).
+
+### Snowflake
+
+```bash
+pip install "pipeverify[snowflake]"
+export SNOWFLAKE_ACCOUNT=myorg-myaccount SNOWFLAKE_USER=ci_user SNOWFLAKE_PRIVATE_KEY_PATH=~/.ssh/snowflake.p8
+export SNOWFLAKE_ROLE=REPORTER SNOWFLAKE_WAREHOUSE=COMPUTE_WH
+pipeverify compare snowflake:PROD.GOLD.ORDERS snowflake:DEV.GOLD.ORDERS --key order_id
+```
+
+It reads the same `SNOWFLAKE_*` variables as the Snowflake CLI and
+[DataRanger](https://github.com/akshaysharma1088/dataranger) (password, key pair, token or
+`SNOWFLAKE_AUTHENTICATOR`), or a named connection from `~/.snowflake/connections.toml` with
+`{snowflake: ..., connection: name}`. It runs one `SELECT` per snapshot, tagged `pipeverify` in
+query history, and nothing else, so a read-only role is enough. Each snapshot is loaded into memory:
+for a big table add `where:` or pass a query, and compare the slice your change touched.
 
 ## Config
 
@@ -200,16 +237,51 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      # ... build the "after" snapshots for this PR here ...
-      - uses: akshaysharma1088/pipeverify@v0.2.2
+      - uses: actions/checkout@v7
+      # ... build the "after" snapshots for this PR here (for example: dbt build --target ci) ...
+      - uses: akshaysharma1088/pipeverify@v0.3.0
         with:
           config: pipeverify.yml
           fail-on: block      # or review, or never
+          extras: snowflake   # optional drivers: snowflake, sql
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}   # only if your sources need them
 ```
 
-The action posts the report as a PR comment and in the job summary, and exposes the verdict as an
-output.
+The action posts the report as a PR comment and in the job summary, fails the job at the verdict you
+choose, and exposes `verdict`, `report` and `json` as outputs.
+
+## Use it from an AI agent (MCP)
+
+An agent that edits a query, a dbt model or a load should not be the one to decide its change was
+safe. pipeverify ships an [MCP](https://modelcontextprotocol.io) server so the agent can ask:
+
+```bash
+uvx pipeverify mcp        # or: pip install pipeverify && pipeverify mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "pipeverify": { "command": "uvx", "args": ["pipeverify", "mcp"] }
+  }
+}
+```
+
+That block works in Claude Desktop, Claude Code, Cursor, VS Code and any other MCP client (Python
+3.10 or newer). The tools:
+
+| Tool | What it does |
+|---|---|
+| `compare_tables` | Compare a table before and after a change: files, DuckDB, Snowflake, dbt models or SQL databases |
+| `check_against_source` | Check an output table against the raw source it was built from, when there is no "before" |
+| `run_config` | Run the project's `pipeverify.yml`, the same check CI runs |
+
+Every tool is read-only: snapshots are read, the checks run in an in-memory DuckDB, and nothing is
+written to your files or warehouse. The agent gets `pass`, `review` or `block` with the evidence, and
+is told to report every review and block finding to you instead of working around it. Database
+credentials stay on your machine (environment variables or `profiles.yml`) and are never tool
+arguments; give the server a read-only role.
 
 ## Python API
 
@@ -245,10 +317,9 @@ in one line. It helps other teams decide whether to try it and shapes what gets 
 
 ## Roadmap
 
-- Native adapters for dbt (compare a PR's models against production), Airflow and Spark
+- Native adapters for Airflow and Spark, and more dbt targets (BigQuery, Postgres, Databricks)
 - Sampling and pushdown for very large tables, so checks run in the warehouse
 - Rules learned from history: what "normal" change looks like for each table
-- Agent integration: a guardrail that coding and data agents call before applying a change
 
 Ideas and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) and the
 [good first issues](https://github.com/akshaysharma1088/pipeverify/labels/good%20first%20issue).
@@ -267,3 +338,5 @@ If you use pipeverify in research, please cite the PipeMend benchmark that motiv
 ## License
 
 Apache-2.0
+
+<!-- mcp-name: io.github.akshaysharma1088/pipeverify -->

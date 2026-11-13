@@ -1,4 +1,4 @@
-# SQL sources
+# Warehouse and SQL sources
 
 pipeverify can read a table, or the result of a query, from any database SQLAlchemy supports.
 Install the SQL extra plus the driver for your database:
@@ -68,6 +68,40 @@ tables:
 
 ## Snowflake
 
+The native Snowflake source is the simplest route (0.3.0 and later). It needs no URL and supports
+key-pair, token and SSO logins:
+
+```bash
+pip install "pipeverify[snowflake]"
+export SNOWFLAKE_ACCOUNT=myorg-myaccount SNOWFLAKE_USER=ci_user SNOWFLAKE_PRIVATE_KEY_PATH=~/.ssh/snowflake.p8
+export SNOWFLAKE_ROLE=REPORTER SNOWFLAKE_WAREHOUSE=COMPUTE_WH
+```
+
+```yaml
+tables:
+  - name: gold.orders
+    before: {snowflake: ANALYTICS.GOLD.ORDERS, where: "order_date >= '2026-10-01'"}
+    after:  {snowflake: ANALYTICS_DEV.GOLD.ORDERS, where: "order_date >= '2026-10-01'"}
+    key: [order_id]
+```
+
+| Setting | Meaning |
+|---|---|
+| `snowflake` | A table (`DB.SCHEMA.TABLE`) or a `SELECT` |
+| `where` | Filter for a table, so only the slice you changed is loaded |
+| `connection` | A named connection from `~/.snowflake/connections.toml`, instead of the environment variables |
+
+Variables read: `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD`, `SNOWFLAKE_PRIVATE_KEY_PATH`,
+`SNOWFLAKE_PRIVATE_KEY_PASSPHRASE`, `SNOWFLAKE_TOKEN`, `SNOWFLAKE_AUTHENTICATOR`, `SNOWFLAKE_PASSCODE`,
+`SNOWFLAKE_ROLE`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_SCHEMA`. For a login with an
+authenticator app, set `SNOWFLAKE_AUTHENTICATOR=username_password_mfa` and `SNOWFLAKE_PASSCODE` to the
+current code. `externalbrowser` works only when your account uses single sign-on.
+
+Column names that Snowflake returns in capitals are lower-cased, so a Snowflake snapshot can be
+compared with a file or DuckDB snapshot of the same table.
+
+The SQLAlchemy route below also still works:
+
 ```bash
 pip install "pipeverify[sql]" snowflake-sqlalchemy
 ```
@@ -114,3 +148,26 @@ tables:
 | `DefaultCredentialsError: Your default credentials were not found` (BigQuery) | Google credentials are not configured. Set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account key file, or run `gcloud auth application-default login`. |
 
 Errors can include parts of the connection URL. Check them before pasting into a public issue.
+## dbt
+
+```yaml
+tables:
+  - name: fct_orders
+    before: {dbt: fct_orders, target: prod, manifest: prod-state/manifest.json}
+    after:  {dbt: fct_orders, target: ci}
+    key: [order_id]
+```
+
+| Setting | Meaning | Default |
+|---|---|---|
+| `dbt` | Model, seed or snapshot name, or a source as `source_name.table_name` | |
+| `target` | Target in `profiles.yml` to connect with | the profile's default |
+| `manifest` | `manifest.json` of the run to compare | `<project_dir>/target/manifest.json` |
+| `project_dir` | Folder that holds `dbt_project.yml` | the config file's folder |
+| `profiles_dir` | Folder that holds `profiles.yml` | `DBT_PROFILES_DIR`, the project folder, then `~/.dbt` |
+| `where` | Filter, so only part of the model is loaded | |
+
+pipeverify reads the manifest and the profile and runs one `SELECT` per side. It does not run dbt.
+`{{ env_var('NAME') }}` in `profiles.yml` is filled in from the environment. DuckDB targets need
+nothing extra; Snowflake targets need `pip install "pipeverify[snowflake]"`. For other warehouses, use
+a `url` source for now. A full example is in [examples/dbt_pr](../examples/dbt_pr).
