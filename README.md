@@ -102,6 +102,8 @@ for s in examples/retail/scenarios/*/; do pipeverify run -c "$s/pipeverify.yml";
 
 Every one of these runs successfully and keeps the same schema.
 
+On Windows, if `pipeverify` is "not recognized" after installing, run it as `python -m pipeverify` instead.
+
 ## Sources
 
 `before` and `after` can each be:
