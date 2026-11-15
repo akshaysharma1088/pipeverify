@@ -1,6 +1,5 @@
 """Snowflake and dbt sources, tested without a Snowflake account or a dbt install."""
 import json
-import os
 
 import duckdb
 import pandas as pd
