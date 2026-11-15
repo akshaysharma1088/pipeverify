@@ -40,3 +40,12 @@ Issues = "https://github.com/akshaysharma1088/pipeverify/issues"
 
 [tool.hatch.build.targets.sdist]
 include = ["pipeverify", "README.md", "LICENSE"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["docs"]  # evaluation scripts for the paper, kept as published
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle errors and bugbear. zip(strict=...) and lambda assignment are style choices here.
+select = ["E4", "E7", "E9", "F", "B"]
+ignore = ["B905", "E731"]

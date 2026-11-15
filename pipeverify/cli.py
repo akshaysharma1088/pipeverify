@@ -136,7 +136,7 @@ def compare(before, after, source_data, source_key, source_columns, source_where
                      expect_change=list(expect_change), ignore=list(ignore),
                      expect_row_change=expect_row_change, source=source)
     except Exception as exc:
-        raise click.ClickException(str(exc))
+        raise click.ClickException(str(exc)) from None
     result = RunResult(tables=[res], seconds=time.perf_counter() - start)
     _maybe_explain(result, explain)
     _emit(result, fmt, output, summary, show_info, json_out, markdown_out, max_examples)
@@ -153,7 +153,7 @@ def run(config, table, fmt, output, summary, fail_on, explain, show_info, json_o
     try:
         result = run_config(config, only=list(table) or None)
     except Exception as exc:
-        raise click.ClickException(str(exc))
+        raise click.ClickException(str(exc)) from None
     if not result.tables:
         raise click.ClickException("No tables matched")
     _maybe_explain(result, explain)
@@ -181,7 +181,7 @@ def mcp():
     try:
         from .mcp_server import main as serve
     except ImportError:
-        raise click.ClickException("The MCP server needs Python 3.10 or newer")
+        raise click.ClickException("The MCP server needs Python 3.10 or newer") from None
     serve()
 
 

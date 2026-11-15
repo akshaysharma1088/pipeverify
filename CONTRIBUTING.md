@@ -7,7 +7,8 @@ Thanks for helping. pipeverify aims to stay small, dependable and easy to run in
 ```bash
 git clone https://github.com/akshaysharma1088/pipeverify && cd pipeverify
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev]" ruff
+ruff check .
 python examples/retail/make_demo.py
 pytest -q
 ```
@@ -28,6 +29,7 @@ Other welcome contributions:
 ## Guidelines
 
 - Every check needs a test with a small DataFrame that shows the problem.
+- Code must pass `ruff check .` (the rules are in `pyproject.toml`); CI fails on new warnings.
 - Verdicts must not depend on an LLM. AI features stay optional and off by default.
 - Never send raw data to an external service without an explicit flag.
 - Keep messages plain: say what changed and by how much.
