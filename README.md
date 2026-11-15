@@ -47,6 +47,21 @@ In the [PipeMend benchmark](https://github.com/akshaysharma1088/pipemend)
 the agents made. What caught them was comparing the data itself. pipeverify packages that check
 so any team can run it on every change.
 
+## How pipeverify compares
+
+pipeverify does not replace your tests. It answers a different question: did this change harm the data?
+
+| | Tests (dbt tests, Great Expectations, Soda) | Data diff tools (for example dbt `audit_helper`, Datafold) | pipeverify |
+|---|---|---|---|
+| Looks at | One table, against rules you write | Two versions of a table | Two versions of a table, and optionally the raw source |
+| Tells you | Which rules failed | Which rows and values differ | Whether the difference is harmful: pass, review or block, with the evidence |
+| Catches a join fan-out or a unit change | Only if you wrote a rule for it | Shows the changed rows; you judge | Yes, as a duplicate or total-shift finding |
+| Fits in CI | Yes | Varies | Yes: CLI, GitHub Action, dbt and Snowflake sources |
+| Callable by an AI agent | No | No | Yes, through MCP |
+
+Keep your tests for rules that must always hold. Add pipeverify on pull requests and on agent
+changes, where the question is whether the change itself left the data right.
+
 ## Quick start
 
 No install needed to try it: [open the 5-minute notebook in Colab](https://colab.research.google.com/github/akshaysharma1088/pipeverify/blob/main/examples/notebooks/quickstart.ipynb).
@@ -309,6 +324,13 @@ pipeverify run --explain
 This adds a short plain-English explanation of what probably happened and what to check next.
 It is off by default. Only the findings are sent (check names, counts, percentages, column names);
 example values from your data are removed first. The verdict never depends on the LLM.
+
+## What data leaves your machine
+
+None of your data, in normal use. Comparisons run locally in an in-memory DuckDB; Snowflake and dbt
+sources run one read-only `SELECT` per snapshot; the MCP server runs on your machine and only
+reads. There is no telemetry. The only outbound call is the optional `--explain` above, which
+sends findings with example values removed, never rows.
 
 ## Who uses pipeverify
 
