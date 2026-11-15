@@ -37,6 +37,11 @@ Other welcome contributions:
 Open an issue with the command you ran, the output, and if possible two tiny CSV files that
 reproduce it.
 
+## Security and conduct
+
+Security problems go through the private process in [SECURITY.md](SECURITY.md), not a public issue.
+By taking part you agree to the [code of conduct](CODE_OF_CONDUCT.md).
+
 ## Using pipeverify?
 
 Add your team to [ADOPTERS.md](ADOPTERS.md) or
