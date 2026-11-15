@@ -257,7 +257,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # ... build the "after" snapshots for this PR here (for example: dbt build --target ci) ...
-      - uses: akshaysharma1088/pipeverify@v0.3.0
+      - uses: akshaysharma1088/pipeverify@v0.3.1
         with:
           config: pipeverify.yml
           fail-on: block      # or review, or never
