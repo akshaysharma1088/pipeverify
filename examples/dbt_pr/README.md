@@ -48,7 +48,7 @@ It does not run dbt and does not write to the warehouse.
 
 ```yaml
 - run: dbt build --target ci
-- uses: akshaysharma1088/pipeverify@v0.3.0
+- uses: akshaysharma1088/pipeverify@v0.3.1
   with:
     config: pipeverify.yml
     extras: snowflake        # the drivers your dbt target needs; leave out for DuckDB

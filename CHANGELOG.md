@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 (2026-11-15)
+
+- `python -m pipeverify` now works, for when pip installs the `pipeverify` command into a folder that is not on PATH (common on Windows).
+- Snowflake source checked against a live Snowflake account.
+- README: how pipeverify compares with tests and data diff tools, and what data leaves your machine (none, in normal use).
+- OpenSSF Best Practices passing badge. Added a code of conduct, and the security policy now states supported versions and a 7-day first response.
+- `ruff` runs in CI on every change. CLI errors no longer chain an internal traceback.
+
 ## 0.3.0 (2026-11-12)
 
 - **dbt source.** `{dbt: model, target: prod, manifest: ...}` finds a model's table from dbt's
