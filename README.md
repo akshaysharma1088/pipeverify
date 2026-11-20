@@ -301,6 +301,18 @@ is told to report every review and block finding to you instead of working aroun
 credentials stay on your machine (environment variables or `profiles.yml`) and are never tool
 arguments; give the server a read-only role.
 
+### Docker
+
+Prebuilt images, one per release, on the [GitHub Container Registry](https://github.com/akshaysharma1088/pipeverify/pkgs/container/pipeverify):
+
+```bash
+docker run --rm -i ghcr.io/akshaysharma1088/pipeverify:latest
+```
+
+Runs pipeverify as the same MCP server over stdio, for hosts that run tools in a container rather
+than a local Python environment. Pin a version instead of `latest` with
+`ghcr.io/akshaysharma1088/pipeverify:v0.3.3`, and so on for any tagged release.
+
 ## Python API
 
 ```python
