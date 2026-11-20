@@ -287,7 +287,11 @@ uvx pipeverify mcp        # or: pip install pipeverify && pipeverify mcp
 ```
 
 That block works in Claude Desktop, Claude Code, Cursor, VS Code and any other MCP client (Python
-3.10 or newer). The tools:
+3.10 or newer).
+
+[![akshaysharma1088/pipeverify MCP server](https://glama.ai/mcp/servers/akshaysharma1088/pipeverify/badges/score.svg)](https://glama.ai/mcp/servers/akshaysharma1088/pipeverify)
+
+The tools:
 
 | Tool | What it does |
 |---|---|
