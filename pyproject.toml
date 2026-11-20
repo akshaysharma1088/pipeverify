@@ -35,8 +35,10 @@ dev = ["pytest>=8", "pandas>=2.0", "openpyxl"]
 pipeverify = "pipeverify.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/akshaysharma1088/pipeverify"
-Issues = "https://github.com/akshaysharma1088/pipeverify/issues"
+Homepage = "https://akshaysharma1088.github.io/"
+Repository = "https://github.com/akshaysharma1088/dataranger"
+Issues = "https://github.com/akshaysharma1088/dataranger/issues"
+"Author LinkedIn" = "https://www.linkedin.com/in/akshay-sharma-1088"
 
 [tool.hatch.build.targets.sdist]
 include = ["pipeverify", "README.md", "LICENSE"]
