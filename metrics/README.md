@@ -1,14 +1,14 @@
 # Usage metrics
 
-Updated 2026-11-19 by `scripts/collect_metrics.py`. Raw history is in the CSV files in this folder.
+Updated 2026-11-23 by `scripts/collect_metrics.py`. Raw history is in the CSV files in this folder.
 
 | Metric | Value |
 |---|---|
 | GitHub stars | 5 |
-| Forks | 6 |
+| Forks | 5 |
 | Watchers | 0 |
 | Repositories that depend on it | n/a |
-| Repository views since 2026-10-08 | 264 |
-| Repository clones since 2026-10-08 | 867 |
-| PyPI downloads since 2026-10-21 (without mirrors) | 882 |
-| PyPI downloads, last 30 days | 882 |
+| Repository views since 2026-10-08 | 290 |
+| Repository clones since 2026-10-08 | 1,018 |
+| PyPI downloads since 2026-10-21 (without mirrors) | 1,122 |
+| PyPI downloads, last 30 days | 751 |
