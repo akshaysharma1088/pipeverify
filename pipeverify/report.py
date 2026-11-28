@@ -1,9 +1,11 @@
-"""Render results for a terminal, a pull request comment (Markdown) or machines (JSON)."""
+"""Render results for a terminal, a pull request comment (Markdown), JSON or JUnit XML."""
 from __future__ import annotations
 
 import json
 import os
+import re
 import sys
+from xml.etree import ElementTree as ET
 
 from .core import RunResult
 
@@ -88,3 +90,44 @@ def to_markdown(result: RunResult) -> str:
 
 def to_json(result: RunResult) -> str:
     return json.dumps(result.to_dict(), indent=2, default=str)
+
+
+def _xml_text(value: str) -> str:
+    # Replace code points prohibited by XML 1.0 before serialization.
+    return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]", "\ufffd", value)
+
+
+def to_junit(result: RunResult) -> str:
+    """Render each table as a JUnit suite, with review findings marked as skipped."""
+    root = ET.Element("testsuites", name="pipeverify")
+    count_paths = {
+        "tests": "testcase",
+        "failures": "testcase/failure",
+        "skipped": "testcase/skipped",
+        "errors": "testcase/error",
+    }
+    totals = dict.fromkeys(count_paths, 0)
+    status_tags = {"block": "failure", "review": "skipped"}
+    for table in result.tables:
+        suite_name = _xml_text(table.name)
+        suite = ET.SubElement(root, "testsuite", name=suite_name)
+        if table.verdict == "pass":
+            ET.SubElement(suite, "testcase", name="PASS", classname=suite_name)
+        else:
+            for index, finding in enumerate(table.findings, 1):
+                name = f"{index}. {finding.check}"
+                if finding.column is not None:
+                    name += f" ({finding.column})"
+                case = ET.SubElement(suite, "testcase", name=_xml_text(name), classname=suite_name)
+                message = _xml_text(finding.message)
+                status = status_tags.get(finding.severity)
+                if status:
+                    ET.SubElement(case, status, message=message).text = message
+                else:
+                    ET.SubElement(case, "system-out").text = message
+        for key, path in count_paths.items():
+            count = len(suite.findall(path))
+            suite.set(key, str(count))
+            totals[key] += count
+    root.attrib.update({key: str(value) for key, value in totals.items()})
+    return ET.tostring(root, encoding="unicode", xml_declaration=True)
