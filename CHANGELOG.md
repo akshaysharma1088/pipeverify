@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `--junit-out PATH` on `compare` and `run` writes a JUnit XML report, so GitLab CI, Jenkins, Azure DevOps and CircleCI can show findings in their test views. One suite per table; BLOCK findings are failures and REVIEW findings are skipped. Contributed by @Rainyyyyyyy111 (#24).
+
 ## 0.3.1 (2026-11-15)
 
 - `python -m pipeverify` now works, for when pip installs the `pipeverify` command into a folder that is not on PATH (common on Windows).
