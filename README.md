@@ -184,7 +184,10 @@ pipeverify run                     # uses ./pipeverify.yml
 pipeverify run --fail-on review    # stricter: fail CI on REVIEW too
 pipeverify run --format markdown -o report.md
 pipeverify run --json-out report.json
+pipeverify run --junit-out report.xml   # for GitLab CI, Jenkins, Azure DevOps, CircleCI
 ```
+
+The JUnit report has one test suite per table. A BLOCK finding is a failure, a REVIEW finding is marked skipped, and a table that passes gets one passing case.
 
 Exit code is `1` when the verdict reaches `--fail-on` (default `block`), otherwise `0`.
 
